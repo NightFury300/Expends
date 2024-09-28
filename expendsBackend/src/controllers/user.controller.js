@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { APIError } from "../utils/APIError.js";
 import { User } from "../models/user.model.js";
+import { Statement } from "../models/statement.model.js";
 import { APIResponse } from "../utils/APIResponse.js";
 import jwt from "jsonwebtoken"
 
@@ -82,7 +83,28 @@ const loginUser = asyncHandler(async (req,res) => {
             refreshToken
         },"User logged in successfully."));
 })
+const logoutUser = asyncHandler(async (req,res) => {
 
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $unset: {
+                refreshToken: 1
+            }
+        }
+    )
+
+    const options = {
+        httpOnly:true,
+        secure:true
+    }
+
+    return res.
+    status(201).
+    clearCookie("accessToken",options).
+    clearCookie("refreshToken",options).
+    json(new APIResponse(200,{},"User logged out successfully"))
+})
 const refreshAccessToken = asyncHandler(async (req,res) => {
     const incomingRefreshToken = req.cookies?.refreshToken || req.body.refreshToken
 
@@ -116,4 +138,47 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
         throw new APIError(401,error?.message || "Invalid Refresh Token")
     }
 })
-export {loginUser,registerUser,refreshAccessToken};
+
+const createStatement = asyncHandler(async (req,res) => {
+    const {amount,type} = req.body;
+
+    const allowedTypes = Statement.schema.path('type').enumValues;
+
+    if(!amount || !type)
+        throw new APIError(404,"Both an amount and type is required")
+
+    if(!allowedTypes.includes(type))
+        throw new APIError(400,"Please enter a valid type")
+
+    const statement = await Statement.create({
+        amount,
+        type,
+        userId: req.user._id
+    })
+
+    await User.findByIdAndUpdate(req.user._id,
+        {$push: {statements: statement._id}}
+    )
+
+    if(!statement)
+        throw new APIError(400,"Something went wrong while creating the statement")
+
+    return res.
+    status(201).
+    json(new APIResponse(200,statement,"Statement created successfully"))
+})
+const deleteStatement = asyncHandler(async (req,res) => {
+    const {statementId} = req.body
+
+    if(!statementId)
+        throw new APIError(404,"Invalid Statement Id")
+
+    const deletedStatement = await Statement.findByIdAndDelete(statementId)
+    await User.findByIdAndUpdate(req.user._id,
+        {$pull: {statements: statementId}}
+    )
+    return res.
+    status(201).
+    json(new APIResponse(200,deletedStatement,"Statement deleted successfully"))
+})
+export {loginUser,registerUser,logoutUser,refreshAccessToken,createStatement,deleteStatement};

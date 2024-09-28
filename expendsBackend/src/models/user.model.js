@@ -24,6 +24,10 @@ const userSchema = new Schema(
             type:String,
             required:true,
         },
+        statements:[{
+            type:Schema.Types.ObjectId,
+            ref:"Statement"
+        }],
         refreshToken:{
             type:String,
         }
