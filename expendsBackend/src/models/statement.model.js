@@ -2,6 +2,11 @@ import mongoose, {Schema} from "mongoose";
 
 const statementSchema = new Schema(
     {
+        name:{
+            type:String,
+            required:true,
+            index:true
+        },
         amount: {
             type:Number,
             required:true

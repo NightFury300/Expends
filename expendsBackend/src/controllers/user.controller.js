@@ -138,19 +138,21 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
         throw new APIError(401,error?.message || "Invalid Refresh Token")
     }
 })
+//create statement,delete statement,get all statements,get one statement,update statement,get summary,filter sort
 
 const createStatement = asyncHandler(async (req,res) => {
-    const {amount,type} = req.body;
+    const {name,amount,type} = req.body;
 
     const allowedTypes = Statement.schema.path('type').enumValues;
 
-    if(!amount || !type)
+    if(!name || !amount || !type)
         throw new APIError(404,"Both an amount and type is required")
 
     if(!allowedTypes.includes(type))
         throw new APIError(400,"Please enter a valid type")
 
     const statement = await Statement.create({
+        name,
         amount,
         type,
         userId: req.user._id
@@ -168,12 +170,16 @@ const createStatement = asyncHandler(async (req,res) => {
     json(new APIResponse(200,statement,"Statement created successfully"))
 })
 const deleteStatement = asyncHandler(async (req,res) => {
-    const {statementId} = req.body
+    const {statementId} = req.params;
 
     if(!statementId)
         throw new APIError(404,"Invalid Statement Id")
 
     const deletedStatement = await Statement.findByIdAndDelete(statementId)
+
+    if(!deletedStatement)
+        throw new APIError(400,"Statement does not exists")
+
     await User.findByIdAndUpdate(req.user._id,
         {$pull: {statements: statementId}}
     )
@@ -181,4 +187,28 @@ const deleteStatement = asyncHandler(async (req,res) => {
     status(201).
     json(new APIResponse(200,deletedStatement,"Statement deleted successfully"))
 })
-export {loginUser,registerUser,logoutUser,refreshAccessToken,createStatement,deleteStatement};
+
+const getStatement = asyncHandler(async (req,res) => {
+    const {statementId} = req.params;    
+
+    if(!statementId)
+        throw new APIError(404,"Please enter a valid statement Id")
+
+    const statement = await Statement.findById(statementId).select("-userId");
+
+    if(!statement)
+        throw new APIError(400,"Something went wrong while fetching the statement")
+
+    const statementData = {
+        Name: statement.name,
+        Amount: statement.amount,
+        Type: statement.type,
+        Date: statement.createdAt.toLocaleDateString(),
+        Time: statement.createdAt.toLocaleTimeString()
+    }
+
+    return res.
+    status(201).
+    json(new APIResponse(200,statementData,"Statement fetched successfully."))
+})
+export {loginUser,registerUser,logoutUser,refreshAccessToken,createStatement,deleteStatement,getStatement};
