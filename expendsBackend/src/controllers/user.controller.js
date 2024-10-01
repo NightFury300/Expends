@@ -200,6 +200,7 @@ const getStatement = asyncHandler(async (req,res) => {
         throw new APIError(400,"Something went wrong while fetching the statement")
 
     const statementData = {
+        _id: statement._id,
         Name: statement.name,
         Amount: statement.amount,
         Type: statement.type,
@@ -211,4 +212,40 @@ const getStatement = asyncHandler(async (req,res) => {
     status(201).
     json(new APIResponse(200,statementData,"Statement fetched successfully."))
 })
-export {loginUser,registerUser,logoutUser,refreshAccessToken,createStatement,deleteStatement,getStatement};
+
+const getAllStatements = asyncHandler(async (req,res) => {
+    const userId = req.user._id;
+    const statements = await Statement.find({userId}).select("-userId")
+
+    const formattedStatements = statements.map((statement) => 
+    {return {
+        _id: statement._id,
+        Name: statement.name,
+        Amount: statement.amount,
+        Type: statement.type,
+        Date: statement.createdAt.toLocaleDateString(),
+        Time: statement.createdAt.toLocaleTimeString()
+    }})
+    return res.
+    status(201).
+    json(new APIResponse(200,formattedStatements,"Statements fetched successfully."))
+})
+
+const updateStatement = asyncHandler(async (req,res) => {
+    const {statementId,name,amount,type} = req.body;
+
+    const allowedTypes = Statement.schema.path('type').enumValues;
+    if(!allowedTypes.includes(type))
+        throw new APIError(400,"Please enter a valid type")
+    
+    const updatedStatement = await Statement.findByIdAndUpdate(
+        statementId,{name,amount,type},{new: true,runValidators:true})
+    
+    if(!updateStatement)
+        throw new APIError(404,"Something went wrong while updating the statement")
+
+    return res.status(201).json(new APIResponse(200,updatedStatement,"Statement updated successfully"))
+})
+
+export {loginUser,registerUser,logoutUser,refreshAccessToken,
+    createStatement,deleteStatement,getStatement,getAllStatements,updateStatement};
