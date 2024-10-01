@@ -247,5 +247,25 @@ const updateStatement = asyncHandler(async (req,res) => {
     return res.status(201).json(new APIResponse(200,updatedStatement,"Statement updated successfully"))
 })
 
+const getStatementSummary = asyncHandler(async (req,res) => {
+    const summaryData = await Statement.aggregate([
+        {
+            $match: {userId: req.user._id}
+        },
+        {
+            $group: {
+                _id: "$type",
+                totalAmount: {$sum: "$amount"} 
+            }
+        }
+    ]
+    )
+
+    if(!summaryData)
+        throw new APIError(400,"Something went wrong while summarying data")
+
+    return res.status(201).json(new APIResponse(200,summaryData,"Data summarised successfully"))
+})
+
 export {loginUser,registerUser,logoutUser,refreshAccessToken,
-    createStatement,deleteStatement,getStatement,getAllStatements,updateStatement};
+    createStatement,deleteStatement,getStatement,getAllStatements,updateStatement,getStatementSummary};
