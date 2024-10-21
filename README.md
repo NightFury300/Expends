@@ -207,7 +207,7 @@ Validates refresh token and refreshes access token for a valid refresh token.
 }
 ```
 - **4. Update a Statement**
-`PUT /update-statement`
+`PATCH /update-statement`
 
 **Request Body:**
 ``` json
